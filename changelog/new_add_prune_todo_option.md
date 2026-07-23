@@ -1,0 +1,1 @@
+* [#13755](https://github.com/rubocop/rubocop/issues/13755): Add `--prune-todo` option that re-checks the `(cop, file)` pairs recorded in `.rubocop_todo.yml` and deletes exclusions that no longer have offenses, much faster than a full `--regenerate-todo`. ([@aiden][])

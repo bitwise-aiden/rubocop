@@ -22,6 +22,7 @@ module RuboCop
     require_relative 'formatter/offense_count_formatter'
     require_relative 'formatter/pacman_formatter'
     require_relative 'formatter/progress_formatter'
+    require_relative 'formatter/prune_todo_formatter'
     require_relative 'formatter/quiet_formatter'
     require_relative 'formatter/tap_formatter'
     require_relative 'formatter/worst_offenders_formatter'
