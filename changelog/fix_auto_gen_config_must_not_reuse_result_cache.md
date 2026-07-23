@@ -1,0 +1,1 @@
+* [#13755](https://github.com/rubocop/rubocop/issues/13755): Fix `--auto-gen-config` generating a corrupt TODO file (e.g. `Enabled: false` instead of `Max`) when `RUBOCOP_CACHE_ROOT` is set, by not consuming result cache entries during config auto-generation. ([@aiden][])

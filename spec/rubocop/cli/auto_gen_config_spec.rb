@@ -1702,6 +1702,36 @@ RSpec.describe 'RuboCop::CLI --auto-gen-config', :isolated_environment do # rubo
       expect(cli.run(['--auto-gen-config'])).to eq(0)
     end
 
+    context 'when a result cache from a previous auto-gen run exists' do
+      around do |example|
+        original = ENV.fetch('RUBOCOP_CACHE_ROOT', nil)
+        ENV['RUBOCOP_CACHE_ROOT'] = File.expand_path('rubocop-cache')
+        RuboCop::ResultCache.reset_config_cache
+        example.run
+      ensure
+        ENV['RUBOCOP_CACHE_ROOT'] = original
+        RuboCop::ResultCache.reset_config_cache
+      end
+
+      it 'generates the same TODO file on a second run instead of reusing ' \
+         'cached results that lack auto-gen evidence' do
+        create_file('example.rb', ['# frozen_string_literal: true',
+                                   '',
+                                   'def f',
+                                   *Array.new(15) { |i| "  x#{i} = #{i}" },
+                                   '  x0',
+                                   'end'])
+        expect(cli.run(%w[--auto-gen-config --no-auto-gen-timestamp])).to eq(0)
+        first_run = File.read('.rubocop_todo.yml')
+        expect(first_run).to include('Metrics/MethodLength:', '  Max:')
+
+        # Create new CLI instance to avoid using cached configuration.
+        new_cli = RuboCop::CLI.new
+        expect(new_cli.run(%w[--auto-gen-config --no-auto-gen-timestamp])).to eq(0)
+        expect(File.read('.rubocop_todo.yml')).to eq(first_run)
+      end
+    end
+
     context 'when Max configuration is overridden in .rubocop.yml' do
       it 'generates Exclude instead of Max' do
         create_file('.rubocop.yml', <<~YAML)

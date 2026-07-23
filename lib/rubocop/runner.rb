@@ -343,6 +343,12 @@ module RuboCop
       @cached_run ||=
         (@options[:cache] == 'true' ||
          (@options[:cache] != 'false' && @config_store.for_pwd.for_all_cops['UseCache'])) &&
+        # When running --auto-gen-config, cops build up auxiliary state while
+        # inspecting files (generated `Max` values for metrics cops, detected
+        # `EnforcedStyle`s, forced disables). That evidence is not stored in
+        # the result cache, so replaying cached offenses would produce a
+        # corrupt TODO file (e.g. `Enabled: false` instead of `Max`).
+        !@options[:auto_gen_config] &&
         # We can't cache results from code which is piped in to stdin
         !@options[:stdin]
     end
