@@ -9,9 +9,14 @@ module RuboCop
   # Provides functionality for caching RuboCop runs.
   # @api private
   class ResultCache
+    # NOTE: `prune_todo_matrix` does affect which offenses are found for a
+    # file, but it is deliberately excluded from the options digest: its
+    # per-file effect is mixed into each file's checksum instead (see
+    # `#per_file_cop_restriction`), so that editing one TODO entry does not
+    # invalidate the cache entries of every other file.
     NON_CHANGING = %i[color format formatters out debug display_time fail_level
                       fix_layout autocorrect safe_autocorrect autocorrect_all
-                      cache fail_fast stdin parallel].freeze
+                      cache fail_fast stdin parallel prune_todo_matrix].freeze
 
     DL_EXTENSIONS = ::RbConfig::CONFIG
                     .values_at('DLEXT', 'DLEXT2')
@@ -113,7 +118,7 @@ module RuboCop
       @path = File.join(rubocop_cache_dir,
                         self.class.source_checksum,
                         context_checksum(team, options),
-                        file_checksum(file, config_store))
+                        file_checksum(file, config_store, options))
       @cached_data = CachedData.new(file)
       @debug = options[:debug]
     end
@@ -175,16 +180,29 @@ module RuboCop
       false
     end
 
-    def file_checksum(file, config_store)
+    def file_checksum(file, config_store, options)
       digester = Digest::SHA1.new
       mode = File.stat(file).mode
-      digester.update("#{file}#{mode}#{config_store.for_file(file).signature}")
+      digester.update(
+        "#{file}#{mode}#{config_store.for_file(file).signature}" \
+        "#{per_file_cop_restriction(file, options)}"
+      )
       digester.file(file)
       digester.hexdigest
     rescue Errno::ENOENT
       # Spurious files that come and go should not cause a crash, at least not
       # here.
       '_'
+    end
+
+    # With --prune-todo, each file is only inspected by the cops recorded for
+    # it in the TODO file, so that per-file cop list must be part of the
+    # file's cache key.
+    def per_file_cop_restriction(file, options)
+      matrix = options[:prune_todo_matrix]
+      return '' unless matrix
+
+      matrix.keys.select { |cop_name| matrix[cop_name].include?(file) }.sort.join(',')
     end
 
     class << self

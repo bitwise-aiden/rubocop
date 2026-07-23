@@ -23,6 +23,7 @@ module RuboCop
     autoload :OffenseCountFormatter, 'rubocop/formatter/offense_count_formatter'
     autoload :PacmanFormatter, 'rubocop/formatter/pacman_formatter'
     autoload :ProgressFormatter, 'rubocop/formatter/progress_formatter'
+    autoload :PruneTodoFormatter, 'rubocop/formatter/prune_todo_formatter'
     autoload :QuietFormatter, 'rubocop/formatter/quiet_formatter'
     autoload :TapFormatter, 'rubocop/formatter/tap_formatter'
     autoload :WorstOffendersFormatter, 'rubocop/formatter/worst_offenders_formatter'

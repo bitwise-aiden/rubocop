@@ -252,12 +252,27 @@ module RuboCop
 
       # @return [Array<cop>]
       def roundup_relevant_cops(processed_source)
-        (cops + opted_in_standby_cops(processed_source)).select do |cop|
+        candidates = cops + opted_in_standby_cops(processed_source)
+        candidates = filter_prune_todo_matrix(candidates, processed_source.file_path)
+
+        candidates.select do |cop|
           next false if cop.excluded_file?(processed_source.file_path)
           next true if processed_source.comment_config.cop_opted_in?(cop)
           next false unless @registry.enabled?(cop, @config)
 
           support_target_ruby_version?(cop) && support_target_rails_version?(cop)
+        end
+      end
+
+      # With --prune-todo, a cop listed in the TODO file only runs on the
+      # files recorded for it there.
+      def filter_prune_todo_matrix(candidates, file_path)
+        matrix = @options[:prune_todo_matrix]
+        return candidates unless matrix
+
+        candidates.select do |cop|
+          files = matrix[cop.cop_name]
+          files.nil? || files.include?(file_path)
         end
       end
 

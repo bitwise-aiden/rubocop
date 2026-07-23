@@ -15,6 +15,7 @@ module RuboCop
       display_only_failed editor_mode except extra_details fail_level fix_layout format formatters
       ignore_disable_comments lint only only_guide_cops out require safe
       autocorrect safe_autocorrect autocorrect_all
+      prune_todo
     ].freeze
 
     class Finished < StandardError; end
@@ -133,6 +134,8 @@ module RuboCop
     def execute_runners
       if @options[:auto_gen_config]
         run_command(:auto_gen_config)
+      elsif @options[:prune_todo]
+        run_command(:prune_todo)
       else
         run_command(:execute_runner).tap { suggest_extensions }
       end
@@ -216,7 +219,7 @@ module RuboCop
       # This must be done after the options have already been processed,
       # because they can affect how ConfigStore behaves
       @options[:formatters] ||= begin
-        if @options[:auto_gen_config]
+        if @options[:auto_gen_config] || @options[:prune_todo]
           formatter = 'autogenconf'
         else
           cfg = @config_store.for_pwd.for_all_cops

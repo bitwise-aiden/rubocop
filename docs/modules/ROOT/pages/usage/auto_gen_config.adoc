@@ -51,3 +51,30 @@ By default, when generating the `.rubocop_todo.yml`, if one style is used
 for all files, these cops will add the settings for the style being used.
 If you want to exclude on a file-by-file basis,
 add the `--no-auto-gen-enforced-style` option along with `--auto-gen-config`.
+
+== Pruning the TODO file
+
+As offenses are fixed, `.rubocop_todo.yml` can be shrunk without paying the
+cost of a full regeneration by running:
+
+[source,sh]
+----
+$ rubocop --prune-todo
+----
+
+This re-checks only the `(cop, file)` pairs recorded in the `Exclude` lists
+of `.rubocop_todo.yml` — each listed file is inspected with just the cops
+listed for it — and deletes the exclusions that no longer have offenses.
+Entries whose `Exclude` lists become empty are removed entirely, and
+`# Offense count` comments are kept up to date. On large code bases this is
+typically orders of magnitude faster than `--regenerate-todo`, and repeated
+runs are accelerated further by the xref:usage/caching.adoc[result cache].
+
+Unlike `--regenerate-todo`, pruning never adds anything: new offenses are not
+recorded, and generated parameters such as `Max`, `MinSize`, `EnforcedStyle`
+or `Enabled: false` entries are left exactly as they are. Anything that
+cannot be verified against a single file on disk — glob or regexp `Exclude`
+entries, entries for cops that are not currently loaded, and files that can
+no longer be parsed — is conservatively kept. Use `--only` to narrow pruning
+to specific cops. Run a full `--regenerate-todo` when you also want new
+offenses or regenerated parameters to be picked up.
