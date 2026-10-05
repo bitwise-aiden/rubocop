@@ -213,6 +213,9 @@ RSpec.describe RuboCop::Options, :isolated_environment do
                                                TODO file, acts like --auto-gen-config.
                   --report-unused-todo-entries Also report TODO configuration file entries that
                                                are no longer needed, and fail if any are found.
+                  --prune-todo                 Remove the TODO configuration file entries that
+                                               are no longer needed. Does not inspect other files
+                                               or add new entries.
                   --exclude-limit COUNT        Set the limit for how many files to explicitly exclude.
                                                If there are more files than the limit, the cop will
                                                be disabled instead. Default is 15.
@@ -607,6 +610,21 @@ RSpec.describe RuboCop::Options, :isolated_environment do
       it 'fails if given without --auto-gen-config' do
         expect { options.parse %w[--auto-gen-only-exclude] }
           .to raise_error(RuboCop::OptionArgumentError)
+      end
+    end
+
+    describe '--prune-todo' do
+      it 'fails if given with --auto-gen-config' do
+        expect { options.parse %w[--prune-todo --auto-gen-config] }
+          .to raise_error(RuboCop::OptionArgumentError,
+                          '--prune-todo cannot be used together with --auto-gen-config.')
+      end
+
+      it 'fails if given with --report-unused-todo-entries' do
+        expect { options.parse %w[--prune-todo --report-unused-todo-entries] }
+          .to raise_error(RuboCop::OptionArgumentError,
+                          '--prune-todo cannot be used together with ' \
+                          '--report-unused-todo-entries.')
       end
     end
 

@@ -165,6 +165,9 @@ $ rubocop --only Rails/Blank,Layout/HeredocIndentation,Naming/FileName
 | `-r/--require`
 | Require Ruby file (see xref:plugins.adoc#loading-legacy-extensions-via-require[Loading Legacy Extensions]).
 
+| `--prune-todo`
+| Remove the `.rubocop_todo.yml` `Exclude` entries that `--report-unused-todo-entries` would report, and leave the rest of the file as it is. It never adds entries; see xref:usage/auto_gen_config.adoc#keeping-the-todo-from-rotting[Keeping the TODO from rotting].
+
 | `--regenerate-todo`
 | Regenerate the TODO list using the same options as the last time it was generated with `--auto-gen-config` (generation options can be overridden).
 

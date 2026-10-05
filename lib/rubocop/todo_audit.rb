@@ -3,7 +3,8 @@
 module RuboCop
   # Audits `.rubocop_todo.yml` for `Exclude` entries that are no longer
   # needed: files a cop would not flag anymore, or files that no longer
-  # exist. Used by the `--report-unused-todo-entries` option.
+  # exist. Used by the `--report-unused-todo-entries` and `--prune-todo`
+  # options.
   # @api private
   class TodoAudit
     Entry = Struct.new(:cop_name, :path)
@@ -18,11 +19,13 @@ module RuboCop
     def unused_entries
       return nil unless todo_path
 
-      entries = todo_exclude_entries
-      return [] if entries.empty?
+      todo_exclude_entries.reject { |entry| offense_count(entry).positive? }
+    end
 
-      offending_cops = offending_cops_without_todo(entries)
-      entries.reject { |entry| offending_cops[absolute(entry.path)]&.include?(entry.cop_name) }
+    # @return [Integer] the number of offenses the entry's cop still reports
+    #   in the entry's file once the todo exclusions are subtracted
+    def offense_count(entry)
+      offense_counts.dig(absolute(entry.path), entry.cop_name) || 0
     end
 
     def todo_file
@@ -30,6 +33,10 @@ module RuboCop
     end
 
     private
+
+    def offense_counts
+      @offense_counts ||= offense_counts_without_todo(todo_exclude_entries)
+    end
 
     def todo_path
       return @todo_path if defined?(@todo_path)
@@ -39,6 +46,10 @@ module RuboCop
     end
 
     def todo_exclude_entries
+      @todo_exclude_entries ||= parse_todo_exclude_entries
+    end
+
+    def parse_todo_exclude_entries
       yaml = YAML.safe_load_file(todo_path, permitted_classes: [Regexp, Symbol], aliases: true)
       return [] unless yaml.is_a?(Hash)
 
@@ -60,14 +71,14 @@ module RuboCop
     end
 
     # Inspects every file the todo entries mention, with the todo exclusions
-    # subtracted from the configuration, and returns the names of the cops
-    # that still report offenses, keyed by absolute file path.
-    def offending_cops_without_todo(entries)
+    # subtracted from the configuration, and returns the number of offenses
+    # per cop name, keyed by absolute file path.
+    def offense_counts_without_todo(entries)
       files = entries.map { |entry| absolute(entry.path) }.uniq.select { |file| File.file?(file) }
 
       files.to_h do |file|
         offenses = inspect_file(file, entries)
-        [file, offenses.to_set(&:cop_name)]
+        [file, offenses.map(&:cop_name).tally]
       end
     end
 

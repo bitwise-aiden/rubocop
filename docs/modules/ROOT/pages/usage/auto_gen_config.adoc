@@ -62,6 +62,24 @@ Entries for cops that are not loaded in the current run (for example,
 extension cops when running plain `rubocop`) are not judged, since the
 absence of their offenses proves nothing.
 
+To remove the unused entries instead of reporting them, run:
+
+[source,console]
+----
+$ rubocop --prune-todo
+
+Removed 1 unused todo entry from `.rubocop_todo.yml`:
+  Style/ClassVars: lib/fixed_file.rb
+----
+
+`--prune-todo` removes exactly the entries that `--report-unused-todo-entries`
+reports, together with a cop's whole section when its last entry is removed,
+and updates the `# Offense count` comments of the sections it changes.
+Everything else in the file stays as it is. Unlike `--regenerate-todo`, it
+only inspects the files that the todo file mentions and it never adds
+entries, so it is a quick way to shrink the todo list after a fix. Glob
+`Exclude` entries are not judged and are always kept.
+
 Another way of silencing offense reports, aside from configuration, is
 through xref:usage/source_code_directives.adoc[source code directives]. These can be added manually or
 automatically.
