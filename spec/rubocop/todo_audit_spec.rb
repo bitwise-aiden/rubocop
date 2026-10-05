@@ -8,6 +8,7 @@ RSpec.describe RuboCop::TodoAudit, :isolated_environment do
   let(:config_store) { RuboCop::ConfigStore.new }
   let(:teams) { [] }
   let(:configs) { [] }
+  let(:unused_entry) { described_class::Entry.new('Style/ClassVars', 'clean.rb') }
 
   before do
     create_file('.rubocop.yml', <<~YAML)
@@ -40,7 +41,7 @@ RSpec.describe RuboCop::TodoAudit, :isolated_environment do
   end
 
   it 'reports the entries whose cop no longer flags the file' do
-    expect(audit.unused_entries).to eq([described_class::Entry.new('Style/ClassVars', 'clean.rb')])
+    expect(audit.unused_entries).to eq([unused_entry])
   end
 
   it 'inspects each file only with the cops that have entries for it' do
@@ -48,6 +49,15 @@ RSpec.describe RuboCop::TodoAudit, :isolated_environment do
 
     expect(teams.map { |team| team.cops.map(&:cop_name) })
       .to contain_exactly(['Style/ClassVars'], ['Style/ClassVars', 'Style/StringLiterals'])
+  end
+
+  context 'with `--parallel`' do
+    subject(:audit) { described_class.new(config_store, parallel: true) }
+
+    it 'inspects the files in worker processes and reports the same entries' do
+      expect(Parallel).to receive(:map).once.and_call_original
+      expect(audit.unused_entries).to eq([unused_entry])
+    end
   end
 
   it 'builds the audit configuration once for files that share a configuration' do

@@ -62,6 +62,9 @@ Entries for cops that are not loaded in the current run (for example,
 extension cops when running plain `rubocop`) are not judged, since the
 absence of their offenses proves nothing.
 
+Each file that the todo file mentions is inspected only with the cops that
+have an entry for it. Add `--parallel` to inspect these files in parallel.
+
 Another way of silencing offense reports, aside from configuration, is
 through xref:usage/source_code_directives.adoc[source code directives]. These can be added manually or
 automatically.

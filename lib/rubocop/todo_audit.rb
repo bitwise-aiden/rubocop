@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'parallel'
+
 module RuboCop
   # Audits `.rubocop_todo.yml` for `Exclude` entries that are no longer
   # needed: files a cop would not flag anymore, or files that no longer
@@ -67,12 +69,26 @@ module RuboCop
     # the offenses of a cop do not depend on which other cops run, so the
     # other cops cannot change whether an entry is still needed.
     def offending_cops_without_todo(entries)
-      cop_names_by_file = entries.group_by { |entry| absolute(entry.path) }
-                                 .transform_values { |list| list.map(&:cop_name).uniq.sort }
+      cop_names_by_file = cop_names_by_file(entries)
+      files = cop_names_by_file.keys.select { |file| File.file?(file) }
 
-      cop_names_by_file.select { |file, _cop_names| File.file?(file) }.to_h do |file, cop_names|
-        offenses = inspect_file(file, cop_names, entries)
-        [file, offenses.to_set(&:cop_name)]
+      offending_cops = map_files(files) do |file|
+        inspect_file(file, cop_names_by_file[file], entries).map(&:cop_name).uniq
+      end
+      files.zip(offending_cops).to_h { |file, cop_names| [file, cop_names.to_set] }
+    end
+
+    def cop_names_by_file(entries)
+      entries.group_by { |entry| absolute(entry.path) }
+             .transform_values { |file_entries| file_entries.map(&:cop_name).uniq.sort }
+    end
+
+    # With `--parallel`, the files are inspected in worker processes.
+    def map_files(files, &block)
+      if @options[:parallel] && files.size > 1
+        Parallel.map(files, &block)
+      else
+        files.map(&block)
       end
     end
 
