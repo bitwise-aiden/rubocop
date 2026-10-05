@@ -62,18 +62,23 @@ module RuboCop
     # Inspects every file the todo entries mention, with the todo exclusions
     # subtracted from the configuration, and returns the names of the cops
     # that still report offenses, keyed by absolute file path.
+    #
+    # Each file is inspected only with the cops that have an entry for it:
+    # the offenses of a cop do not depend on which other cops run, so the
+    # other cops cannot change whether an entry is still needed.
     def offending_cops_without_todo(entries)
-      files = entries.map { |entry| absolute(entry.path) }.uniq.select { |file| File.file?(file) }
+      cop_names_by_file = entries.group_by { |entry| absolute(entry.path) }
+                                 .transform_values { |list| list.map(&:cop_name).uniq.sort }
 
-      files.to_h do |file|
-        offenses = inspect_file(file, entries)
+      cop_names_by_file.select { |file, _cop_names| File.file?(file) }.to_h do |file, cop_names|
+        offenses = inspect_file(file, cop_names, entries)
         [file, offenses.to_set(&:cop_name)]
       end
     end
 
-    def inspect_file(file, entries)
+    def inspect_file(file, cop_names, entries)
       config = audit_config(@config_store.for_file(file), entries)
-      team = Cop::Team.mobilize(Cop::Registry.global, config, @options.merge(autocorrect: false))
+      team = Cop::Team.mobilize(registry_for(cop_names), config, @options.merge(autocorrect: false))
 
       processed_source = ProcessedSource.from_file(
         file, config.target_ruby_version, parser_engine: config.parser_engine
@@ -84,9 +89,26 @@ module RuboCop
       team.investigate(processed_source).offenses.reject(&:disabled?)
     end
 
+    # The cops with the given names, in a registry that is shared by all the
+    # files with the same cops so that their enabled cops are found only once
+    # for each configuration.
+    def registry_for(cop_names)
+      @registries ||= {}
+      @registries[cop_names] ||= begin
+        registry = Cop::Registry.global
+        registry.filter_by_badge(registry.options) { |badge| cop_names.include?(badge.to_s) }
+      end
+    end
+
     # A copy of the configuration with the todo exclusions removed for the
     # audited cops, so their offenses in the listed files become visible.
+    # Files that share a configuration share its copy.
     def audit_config(config, entries)
+      @audit_configs ||= {}.compare_by_identity
+      @audit_configs[config] ||= build_audit_config(config, entries)
+    end
+
+    def build_audit_config(config, entries)
       hash = config.to_hash.dup
 
       entries.group_by(&:cop_name).each do |cop_name, cop_entries|
